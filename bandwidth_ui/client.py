@@ -9,19 +9,17 @@
 #    • Saves everything to results.txt
 # =============================================================
 
-import socket     # Network connections
-import time       # For sleep (simulated latency) and perf_counter (timing)
+import socket     
+import time       
 
 
-# ==============================================================
-#  SETTINGS  -  change these to experiment
-# ==============================================================
-HOST            = "localhost"   # Server address
-PORT            = 9090          # Must match server.py
-RUNS_PER_SIZE   = 3             # How many times to test each data size
-SIMULATED_DELAY = 0.2           # Seconds to wait before each send (latency sim)
 
-# Data sizes to test (in bytes).  1 MB = 1024 * 1024 bytes
+HOST            = "localhost"   
+PORT            = 9090          
+RUNS_PER_SIZE   = 3             
+SIMULATED_DELAY = 0.2           
+
+
 DATA_SIZES = {
     " 5 MB":  5  * 1024 * 1024,
     "10 MB": 10  * 1024 * 1024,
@@ -29,10 +27,7 @@ DATA_SIZES = {
 }
 
 
-# ==============================================================
-#  HELPER: run ONE bandwidth test
-#  Returns the speed in MB/s for that single run.
-# ==============================================================
+
 def run_single_test(data: bytes) -> float:
     """
     Connects to the server, sends `data`, measures time, returns MB/s.
@@ -48,70 +43,41 @@ def run_single_test(data: bytes) -> float:
         Measured bandwidth in MB/s.
     """
 
-    # ----------------------------------------------------------
-    # Step 1: Create a fresh TCP socket for this run
-    # ----------------------------------------------------------
+   
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    # ----------------------------------------------------------
-    # Step 2: Connect to the server
-    # ----------------------------------------------------------
+   
     client_socket.connect((HOST, PORT))
 
-    # ----------------------------------------------------------
-    # Step 3: Simulate network latency
-    #   In real networks packets don't arrive instantly.
-    #   Sleeping here mimics that delay so results are more
-    #   representative of real-world conditions.
-    # ----------------------------------------------------------
+   
     time.sleep(SIMULATED_DELAY)
 
-    # ----------------------------------------------------------
-    # Step 4: Start the high-precision timer JUST before sending
-    #   perf_counter() is more accurate than time.time() for
-    #   measuring short durations.
-    # ----------------------------------------------------------
+    
     start_time = time.perf_counter()
 
-    # ----------------------------------------------------------
-    # Step 5: Send ALL the data
-    #   sendall() keeps sending until every byte is delivered
-    #   (unlike send() which may only send part of the buffer).
-    # ----------------------------------------------------------
+   
     client_socket.sendall(data)
 
-    # ----------------------------------------------------------
-    # Step 6: Tell the server we are done sending
-    #   shutdown(SHUT_WR) sends a FIN packet so recv() on the
-    #   server returns b'' and the server's loop ends cleanly.
-    # ----------------------------------------------------------
+   
     client_socket.shutdown(socket.SHUT_WR)
 
-    # ----------------------------------------------------------
-    # Step 7: Stop the timer
-    # ----------------------------------------------------------
+   
     end_time = time.perf_counter()
 
-    # ----------------------------------------------------------
-    # Step 8: Calculate results
-    # ----------------------------------------------------------
-    time_taken  = end_time - start_time                # Seconds
-    data_mb     = len(data) / (1024 * 1024)            # Bytes → MB
-    bandwidth   = data_mb / time_taken                 # MB / second
+    
+    time_taken  = end_time - start_time                
+    data_mb     = len(data) / (1024 * 1024)            
+    bandwidth   = data_mb / time_taken                 
 
-    # ----------------------------------------------------------
-    # Step 9: Close the socket
-    # ----------------------------------------------------------
+    
     client_socket.close()
 
     return bandwidth, time_taken, data_mb
 
 
-# ==============================================================
-#  MAIN: loop over each data size, run multiple tests, log it
-# ==============================================================
+
 def main():
-    all_results = []   # We'll write these lines to results.txt at the end
+    all_results = []   
 
     print("=" * 55)
     print("         NETWORK BANDWIDTH MEASUREMENT TOOL")
@@ -121,30 +87,25 @@ def main():
     print(f"  Simulated lag : {SIMULATED_DELAY}s before each send")
     print("=" * 55)
 
-    # ----------------------------------------------------------
-    # Outer loop: iterate over each data size (5 MB, 10 MB, 50 MB)
-    # ----------------------------------------------------------
+    
     for label, size_bytes in DATA_SIZES.items():
 
         print(f"\n[TEST] Data size: {label}")
         print("-" * 45)
 
-        # Pre-generate the data ONCE per size (reuse across runs)
-        # b'\x00' * N creates N zero-bytes very quickly
+        
         payload = bytes(size_bytes)
 
-        run_speeds = []   # Collect speeds from each run
+        run_speeds = []   
 
-        # ------------------------------------------------------
-        # Inner loop: repeat the test RUNS_PER_SIZE times
-        # ------------------------------------------------------
+        
         for run_number in range(1, RUNS_PER_SIZE + 1):
             print(f"  Run {run_number}/{RUNS_PER_SIZE}  ", end="", flush=True)
 
             speed, duration, mb = run_single_test(payload)
             run_speeds.append(speed)
 
-            # Print the result for this single run
+           
             result_line = (
                 f"  Run {run_number}/{RUNS_PER_SIZE} | "
                 f"Data: {mb:.1f} MB | "
@@ -154,9 +115,7 @@ def main():
             print(result_line.strip())
             all_results.append(result_line)
 
-        # ------------------------------------------------------
-        # Calculate and display average speed for this data size
-        # ------------------------------------------------------
+        
         average_speed = sum(run_speeds) / len(run_speeds)
 
         summary_line = (
@@ -166,13 +125,11 @@ def main():
         print(summary_line)
         all_results.append(summary_line)
 
-    # ----------------------------------------------------------
-    # Final formatted summary (the output format from the spec)
-    # ----------------------------------------------------------
+    
     print("\n" + "=" * 55)
     print("          FINAL SUMMARY (last 50 MB run)")
     print("=" * 55)
-    # Re-run one clean 50 MB test just for the pretty output
+    
     payload_50 = bytes(50 * 1024 * 1024)
     final_speed, final_time, final_mb = run_single_test(payload_50)
     print(f"\n--- Bandwidth Test Result ---")
@@ -180,9 +137,7 @@ def main():
     print(f"Time taken : {final_time:.6f} seconds")
     print(f"Speed      : {final_speed:.2f} MB/s")
 
-    # ----------------------------------------------------------
-    # Save all results to results.txt
-    # ----------------------------------------------------------
+    
     with open("results.txt", "w") as f:
         f.write("BANDWIDTH TEST RESULTS\n")
         f.write("=" * 55 + "\n")
