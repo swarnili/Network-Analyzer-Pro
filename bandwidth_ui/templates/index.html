@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HACKER ATTACK | Bandwidth Pro</title>
+    <style>
+        body { 
+            background-color: #030a1c;
+            background-image: linear-gradient(rgba(0, 242, 255, 0.05) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(0, 242, 255, 0.05) 1px, transparent 1px);
+            background-size: 30px 30px;
+            color: #00f2ff; font-family: 'Courier New', monospace; 
+            display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px;
+        }
+        .dashboard { 
+            border: 1px solid #00f2ff; padding: 30px; background: rgba(10, 25, 47, 0.9); 
+            box-shadow: 0 0 20px #00f2ff; border-radius: 10px; text-align: center; width: 600px; 
+        }
+        .stat-large { font-size: 3em; color: #ff00e6; text-shadow: 0 0 10px #ff00e6; margin: 10px 0; }
+        .controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
+        input { background: #000; border: 1px solid #00f2ff; color: #00f2ff; padding: 5px; width: 120px; }
+        button { background: transparent; border: 1px solid #00f2ff; color: #00f2ff; padding: 10px 20px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #00f2ff; color: black; box-shadow: 0 0 10px #00f2ff; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9em; }
+        th, td { border: 1px solid rgba(0, 242, 255, 0.3); padding: 8px; text-align: left; }
+        th { background: rgba(0, 242, 255, 0.1); }
+        .localhost-note { font-size: 0.7em; color: #888; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <h1>NETWORK ANALYZER PRO</h1>
+        
+        <div class="controls">
+            <input type="text" id="target-ip" value="localhost" placeholder="Server IP">
+            <input type="number" id="run-count" value="3" min="1" max="10">
+            <button onclick="runTest()">Initiate Scan</button>
+        </div>
+
+        <div id="avg-speed" class="stat-large">0.00 MB/s</div>
+        <div>AVERAGE THROUGHPUT</div>
+
+        <table id="results-table">
+            <thead>
+                <tr>
+                    <th>Run #</th>
+                    <th>Data</th>
+                    <th>Time</th>
+                    <th>Speed</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <p class="localhost-note">* Localhost speeds represent internal bus throughput, not ISP bandwidth.</p>
+    </div>
+
+    <script>
+        async function runTest() {
+            const ip = document.getElementById('target-ip').value;
+            const runs = document.getElementById('run-count').value;
+            const tableBody = document.querySelector('#results-table tbody');
+            const avgDisplay = document.getElementById('avg-speed');
+            
+            tableBody.innerHTML = "<tr><td colspan='4'>Scanning network...</td></tr>";
+            
+            try {
+                const response = await fetch('/run-test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ip: ip, runs: runs })
+                });
+                
+                const data = await response.json();
+                
+                if(data.error) {
+                    tableBody.innerHTML = `<tr><td colspan='4' style="color:red">ERROR: ${data.error}</td></tr>`;
+                    return;
+                }
+
+                avgDisplay.innerText = data.average + " MB/s";
+                tableBody.innerHTML = ""; // Clear loading message
+
+                data.all_runs.forEach((run, index) => {
+                    let row = `<tr>
+                        <td>${index + 1}</td>
+                        <td>${run.data_sent} MB</td>
+                        <td>${run.time}s</td>
+                        <td>${run.speed} MB/s</td>
+                    </tr>`;
+                    tableBody.innerHTML += row;
+                });
+
+            } catch (err) {
+                tableBody.innerHTML = `<tr><td colspan='4' style="color:red">System Crash: Check if Flask is running.</td></tr>`;
+            }
+        }
+    </script>
+</body>
+</html>
